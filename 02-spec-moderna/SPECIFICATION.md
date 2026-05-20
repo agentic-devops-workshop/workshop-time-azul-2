@@ -396,6 +396,25 @@ REQ-PAY-007:
   risk: ALTO
 ```
 
+#### REQ-PAY-008 · Cancelamento manual de pagamento gerado
+
+```yaml
+REQ-PAY-008:
+  pattern: state-driven
+  text: "Enquanto o status de um Payment for 'G' (gerado), o SIFAP deve
+         permitir o cancelamento manual pelo operador, registrando o motivo
+         informado e alterando o status para 'C' (cancelado)."
+  source_legacy: 01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L160-L167
+  business_rule: BR-021
+  acceptance:
+    - "Pagamento com status 'G' → cancelamento aceito, status muda para 'C'."
+    - "Pagamento com status 'P','D','E' → cancelamento rejeitado HTTP 422."
+    - "Motivo é obrigatório — envio sem motivo retorna HTTP 422."
+    - "Evento de auditoria gerado com ação='UPDATE' e motivo informado."
+  priority: P1
+  risk: ALTO
+```
+
 ---
 
 ### Módulo Audit
@@ -511,6 +530,7 @@ REQ-ADM-002:
 | `/api/v1/payments/cycle` | `POST` | Gerar ciclo mensal | REQ-PAY-003 | 201, 409 |
 | `/api/v1/payments/reconciliation` | `POST` | Importar CNAB 240 | REQ-PAY-005 | 200, 422 |
 | `/api/v1/payments/export` | `GET` | Exportar relatório CSV | REQ-PAY-006 | 200 |
+| `/api/v1/payments/{id}/cancel` | `PATCH` | Cancelar pagamento gerado | REQ-PAY-008 | 200, 422 |
 | `/api/v1/audit` | `GET` | Consultar auditoria | REQ-AUD-002 | 200 |
 | `/api/v1/programs` | `POST` | Cadastrar programa | REQ-ADM-001 | 201, 409 |
 
@@ -544,7 +564,7 @@ REQ-ADM-002:
 | BR-033 | REQ-PAY-004 | ✅ coberta |
 | BR-024, BR-025, BR-026 | REQ-PAY-005 | ✅ coberta |
 | BR-043 | REQ-PAY-006 | ✅ coberta |
-| BR-021 | REQ-PAY-007 | ✅ coberta |
+| BR-021 | REQ-PAY-007, REQ-PAY-008 | ✅ coberta |
 | BR-044 | REQ-AUD-001 | ✅ coberta |
 | BR-045 | REQ-AUD-002 | ✅ coberta |
 | BR-044, BR-025 | REQ-AUD-003 | ✅ coberta |
@@ -553,7 +573,7 @@ REQ-ADM-002:
 | BR-028, BR-029 | — | ⏸ correção monetária fora de escopo v1 |
 | BR-032 | — | ⏸ desconto sindical simplificado (evoluir em v2) |
 
-> ✅ **17 REQ-IDs têm `source_legacy:`** (16 apontam para `.NSN`, 1 GREENFIELD justificado).
+> ✅ **18 REQ-IDs têm `source_legacy:`** (17 apontam para `.NSN`, 1 GREENFIELD justificado).
 
 ---
 

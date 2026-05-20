@@ -97,10 +97,10 @@ Pergunte de cada funcionalidade:
 
 ## Aprovação
 
-- [ ] Par 1 (Product Owner) aprovou as decisões de escopo
-- [ ] Par 2 (Enterprise Architect) validou a viabilidade técnica
-- [ ] Par 3 (Technical Lead) confirmou que cabe nas 3 horas do Estágio 3
-- [ ] Time concordou com as prioridades
+- [x] Par 1 (Product Owner) aprovou as decisões de escopo
+- [x] Par 2 (Enterprise Architect) validou a viabilidade técnica
+- [x] Par 3 (Technical Lead) confirmou que cabe nas 3 horas do Estágio 3
+- [x] Time concordou com as prioridades
 
 > **Aprovação obrigatória na Passagem #2** (~16:00). Sem ela, o Estágio 3 não começa.
 
