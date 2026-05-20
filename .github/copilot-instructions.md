@@ -189,4 +189,5 @@ Veja [`00-TEAM-FLOW.md`](../00-TEAM-FLOW.md) para diagramas de passagem e a linh
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
+at `specs/002-sifap-modernizacao/plan.md`
 <!-- SPECKIT END -->
