@@ -185,3 +185,8 @@ Veja [`00-TEAM-FLOW.md`](../00-TEAM-FLOW.md) para diagramas de passagem e a linh
 - Módulos de infraestrutura (`infra/`) — módulos Terraform Azure (symlink, criado por setup.sh)
 - [Spec-Kit SDD Plugin](https://github.com/github/spec-kit) — engine de Spec-Driven Development
 - Docs didáticos trilíngues: [`pt-br/`](../) · [`es/`](../../es/) · [`en/`](../../en/)
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

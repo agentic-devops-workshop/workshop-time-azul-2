@@ -23,7 +23,7 @@
 > - **Descartar**: não trazer — funcionalidade obsoleta ou desnecessária
 > - **Evoluir**: trazer E melhorar (nova UX, novo fluxo, nova capacidade)
 
-**Time**: [Nome do Time]
+**Time**: Time Azul 2
 **Data**: 19/05/2026
 **Edição**:
 **Par 1 (Product Owner) responsável**: [Nome]
@@ -45,20 +45,20 @@ Pergunte de cada funcionalidade:
 
 ## Decisões por Funcionalidade
 
-| #   | Funcionalidade            | Decisão                      | Justificativa | Regra de Negócio (BR-XXX) | Prioridade           |
-| --- | ------------------------- | ---------------------------- | ------------- | ------------------------- | -------------------- |
-| 1   | Cadastro de Beneficiários | Migrar / Descartar / Evoluir |               |                           | Alta / Média / Baixa |
-| 2   | Consulta de Beneficiários |                              |               |                           |                      |
-| 3   | Registro de Pagamentos    |                              |               |                           |                      |
-| 4   | Processamento Batch       |                              |               |                           |                      |
-| 5   | Cálculo de Benefícios     |                              |               |                           |                      |
-| 6   | Validação de CPF          |                              |               |                           |                      |
-| 7   | Relatórios                |                              |               |                           |                      |
-| 8   | Auditoria                 |                              |               |                           |                      |
-| 9   | Gestão de Usuários        |                              |               |                           |                      |
-| 10  |                           |                              |               |                           |                      |
-| 11  |                           |                              |               |                           |                      |
-| 12  |                           |                              |               |                           |                      |
+| #   | Funcionalidade            | Decisão    | Justificativa | Regra de Negócio (BR-XXX) | Prioridade |
+| --- | ------------------------- | ---------- | ------------- | ------------------------- | ---------- |
+| 1   | Cadastro de Beneficiários | Migrar     | Core do sistema — cadastro é pré-requisito de pagamento. Lógica de validação CPF Módulo 11 é crítica e bem documentada no legado. | BR-001, BR-034 | Alta |
+| 2   | Consulta de Beneficiários | Evoluir    | Legado usa tela Natural caracter. Evoluir para busca por CPF/NIS com UX moderna (Next.js) e mascaramento LGPD. | BR-042 | Alta |
+| 3   | Registro de Pagamentos    | Migrar     | Ciclo mensal de pagamentos é a razão de existir do SIFAP. Manter lógica exata de cálculo (fator K, regional, renda, familiar). | BR-016, BR-021 | Alta |
+| 4   | Processamento Batch       | Evoluir    | Legado é batch noturno sequencial. Evoluir para processamento com virtual threads (Java 21) e progresso observável em tempo real. | BR-016, BR-017, BR-018 | Alta |
+| 5   | Cálculo de Benefícios     | Migrar     | Fórmula de cálculo com fator K e reajuste é regra regulatória. Migrar exatamente: VLR-CALC = VLR-BASE × (1.00 + FATOR × 0.347215). | BR-012, BR-027 | Alta |
+| 6   | Validação de CPF          | Migrar     | Algoritmo Módulo 11 é padrão nacional. Migrar sem alteração. | BR-034 | Média |
+| 7   | Relatórios                | Evoluir    | Legado gera relatórios em texto fixo (132 colunas). Evoluir para CSV/PDF exportável com filtros por programa social. | BR-043 | Média |
+| 8   | Auditoria                 | Evoluir    | Legado tem trilha básica append-only. Evoluir para auditoria completa com before/after state (JSONB), filtros por período e export. | BR-044 | Alta |
+| 9   | Gestão de Usuários        | Evoluir    | Legado não tem autenticação real. Evoluir para OAuth2/OIDC com 3 roles (OPERATOR, ADMIN, AUDITOR) e integração Gov.br. | — | Alta |
+| 10  | Conciliação Bancária      | Migrar     | Processamento de retorno CNAB 240 do BB é obrigatório. Manter mapeamento de códigos de retorno e detecção de divergências. | BR-024, BR-025 | Alta |
+| 11  | Descontos                 | Migrar     | Regras de desconto (teto 30% não-judicial, judicial sem teto, contribuição social por faixa) são regulatórias. Migrar exatamente. | BR-030, BR-031 | Alta |
+| 12  | Correção Monetária        | Descartar  | Índice de correção monetária (IGPM/IPCA) não é mais usado desde 2018. O sistema legado ainda calcula mas o resultado é ignorado. | BR-028, BR-029 | Baixa |
 
 > Adicione linhas para cada funcionalidade identificada no `discovery-report.md` do Estágio 1.
 
@@ -70,9 +70,9 @@ Pergunte de cada funcionalidade:
 
 | #   | Funcionalidade Nova | Justificativa | Prioridade | Complexidade |
 | --- | ------------------- | ------------- | ---------- | ------------ |
-| N1  |                     |               |            |              |
-| N2  |                     |               |            |              |
-| N3  |                     |               |            |              |
+| N1  | Mascaramento CPF/LGPD | Lei 13.709/2018 (LGPD) Art. 6º — dados pessoais não podem ser expostos em logs, relatórios ou telas sem necessidade. Não existe no legado. | Alta | Média |
+| N2  | Dashboard analítico | Visão consolidada de pagamentos por programa, região e período. Legado não tem visualização — só relatórios textuais. | Média | Alta |
+| N3  | API de integração REST | Exposição de endpoints REST/JSON para integração com outros sistemas do governo. Legado opera isolado via arquivos batch. | Alta | Média |
 
 ---
 
@@ -80,18 +80,20 @@ Pergunte de cada funcionalidade:
 
 | Decisão   | Quantidade | Percentual |
 | --------- | ---------- | ---------- |
-| Migrar    |            |            |
-| Descartar |            |            |
-| Evoluir   |            |            |
-| **Total** |            | 100%       |
+| Migrar    | 5          | 42%        |
+| Descartar | 1          | 8%         |
+| Evoluir   | 6          | 50%        |
+| **Total** | **12**     | 100%       |
 
 ## Riscos de Escopo
 
 > Liste os riscos das decisões tomadas:
 
-| Risco | Probabilidade        | Impacto              | Mitigação |
-| ----- | -------------------- | -------------------- | --------- |
-|       | Alta / Média / Baixa | Alto / Médio / Baixo |           |
+| Risco | Probabilidade | Impacto | Mitigação |
+| ----- | ------------- | ------- | --------- |
+| Fórmula de cálculo de benefício tem caso de borda não documentado (fator K × 0.347215 — constante mágica sem explicação no legado) | Média | Alto | Testes de equivalência com dados reais do BATCHPGT.NSN; validar 100 casos antes do deploy |
+| Conciliação CNAB 240 pode ter códigos de retorno novos não mapeados no legado | Baixa | Médio | Tratar código desconhecido como "pendente" + alerta; mapear novos códigos sob demanda |
+| Mascaramento LGPD pode impactar debugging em produção (CPF mascarado dificulta investigação) | Alta | Médio | Permitir acesso a CPF completo apenas via role ADMIN + log de auditoria do próprio acesso |
 
 ## Aprovação
 
