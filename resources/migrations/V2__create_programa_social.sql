@@ -157,22 +157,22 @@ create table if not exists programa_social_param_regional (
 -- S1: Código programa (já é UNIQUE na tabela principal)
 
 -- S2: Tipo + Situação
-create index idx_programa_tipo_sit on
+create index if not exists idx_programa_tipo_sit on
    programa_social (
       tipo_programa,
       sit_programa
    );
 
 -- FK indexes
-create index idx_faixa_programa_id on
+create index if not exists idx_faixa_programa_id on
    programa_social_faixa_calculo (
       programa_social_id
    );
-create index idx_tipo_dsct_programa_id on
+create index if not exists idx_tipo_dsct_programa_id on
    programa_social_tipo_desconto (
       programa_social_id
    );
-create index idx_param_regional_programa_id on
+create index if not exists idx_param_regional_programa_id on
    programa_social_param_regional (
       programa_social_id
    );

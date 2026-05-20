@@ -195,32 +195,32 @@ create table if not exists pagamento_hash_arquivo (
 -- Índices (DE) + Superdescriptors
 -- ============================================================
 
-create index idx_pagamento_cpf on
+create index if not exists idx_pagamento_cpf on
    pagamento (
       num_cpf
    );
-create index idx_pagamento_programa on
+create index if not exists idx_pagamento_programa on
    pagamento (
       cod_programa
    );
-create index idx_pagamento_competencia on
+create index if not exists idx_pagamento_competencia on
    pagamento (
       ano_mes_ref
    );
-create index idx_pagamento_dt_geracao on
+create index if not exists idx_pagamento_dt_geracao on
    pagamento (
       dt_geracao
    );
 
 -- S1: CPF + Competência
-create index idx_pagamento_cpf_competencia on
+create index if not exists idx_pagamento_cpf_competencia on
    pagamento (
       num_cpf,
       ano_mes_ref
    );
 
 -- S2: Programa + Competência + Situação
-create index idx_pagamento_prog_comp_sit on
+create index if not exists idx_pagamento_prog_comp_sit on
    pagamento (
       cod_programa,
       ano_mes_ref,
@@ -228,30 +228,30 @@ create index idx_pagamento_prog_comp_sit on
    );
 
 -- S3: Ciclo + Situação
-create index idx_pagamento_ciclo_sit on
+create index if not exists idx_pagamento_ciclo_sit on
    pagamento (
       num_ciclo,
       sit_pagamento
    );
 
 -- FK indexes
-create index idx_desconto_pagamento_id on
+create index if not exists idx_desconto_pagamento_id on
    pagamento_desconto (
       pagamento_id
    );
-create index idx_dados_bancarios_pagamento_id on
+create index if not exists idx_dados_bancarios_pagamento_id on
    pagamento_dados_bancarios (
       pagamento_id
    );
-create index idx_integ_siafi_pagamento_id on
+create index if not exists idx_integ_siafi_pagamento_id on
    pagamento_integracao_siafi (
       pagamento_id
    );
-create index idx_conciliacao_pagamento_id on
+create index if not exists idx_conciliacao_pagamento_id on
    pagamento_conciliacao (
       pagamento_id
    );
-create index idx_hash_pagamento_id on
+create index if not exists idx_hash_pagamento_id on
    pagamento_hash_arquivo (
       pagamento_id
    );

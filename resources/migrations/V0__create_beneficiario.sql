@@ -220,25 +220,25 @@ create table if not exists dependente (
 -- ============================================================
 
 -- S1: CPF completo (superdescriptor)
-create unique index idx_beneficiario_cpf on
+create unique index if not exists idx_beneficiario_cpf on
    beneficiario (
       num_cpf
    );
 
 -- (DE) BG: UF no endereço
-create index idx_endereco_uf on
+create index if not exists idx_endereco_uf on
    beneficiario_endereco (
       uf
    );
 
 -- (DE) CB: Data cadastro no benefício
-create index idx_beneficio_dt_cadastro on
+create index if not exists idx_beneficio_dt_cadastro on
    beneficiario_beneficio (
       dt_cadastro
    );
 
 -- (DE) GA: Data inclusão
-create index idx_beneficiario_dt_inclusao on
+create index if not exists idx_beneficiario_dt_inclusao on
    beneficiario (
       dt_inclusao
    );
@@ -247,40 +247,40 @@ create index idx_beneficiario_dt_inclusao on
 -- NOTA: No modelo normalizado, UF está em beneficiario_endereco e situação em
 -- beneficiario_beneficio. Esse superdescriptor requer JOIN entre tabelas.
 -- Índice funcional criado na tabela de benefício por situação para consultas frequentes.
-create index idx_beneficio_situacao on
+create index if not exists idx_beneficio_situacao on
    beneficiario_beneficio (
       sit_beneficiario
    );
 
 -- S3: Programa + Situação (superdescriptor composto)
-create index idx_beneficio_programa_situacao on
+create index if not exists idx_beneficio_programa_situacao on
    beneficiario_beneficio (
       cod_programa,
       sit_beneficiario
    );
 
 -- FK indexes
-create index idx_documento_rg_beneficiario_id on
+create index if not exists idx_documento_rg_beneficiario_id on
    beneficiario_documento_rg (
       beneficiario_id
    );
-create index idx_endereco_beneficiario_id on
+create index if not exists idx_endereco_beneficiario_id on
    beneficiario_endereco (
       beneficiario_id
    );
-create index idx_beneficio_beneficiario_id on
+create index if not exists idx_beneficio_beneficiario_id on
    beneficiario_beneficio (
       beneficiario_id
    );
-create index idx_contato_beneficiario_id on
+create index if not exists idx_contato_beneficiario_id on
    beneficiario_contato (
       beneficiario_id
    );
-create index idx_biometria_beneficiario_id on
+create index if not exists idx_biometria_beneficiario_id on
    beneficiario_biometria (
       beneficiario_id
    );
-create index idx_dependente_beneficiario_id on
+create index if not exists idx_dependente_beneficiario_id on
    dependente (
       beneficiario_id
    );

@@ -120,44 +120,44 @@ create table if not exists auditoria_campo_posterior (
 -- (DE) AA: Número auditoria (já é UNIQUE)
 
 -- (DE) AB: Data evento
-create index idx_auditoria_dt_evento on
+create index if not exists idx_auditoria_dt_evento on
    auditoria (
       dt_evento
    );
 
 -- (DE) BA: Código ação
-create index idx_auditoria_cod_acao on
+create index if not exists idx_auditoria_cod_acao on
    auditoria (
       cod_acao
    );
 
 -- (DE) CB: ID entidade
-create index idx_auditoria_id_entidade on
+create index if not exists idx_auditoria_id_entidade on
    auditoria (
       id_entidade
    );
 
 -- (DE) CC: CPF afetado
-create index idx_auditoria_cpf_afetado on
+create index if not exists idx_auditoria_cpf_afetado on
    auditoria (
       num_cpf_afetado
    );
 
 -- (DE) EA: Usuário evento
-create index idx_auditoria_usr_evento on
+create index if not exists idx_auditoria_usr_evento on
    auditoria (
       usr_evento
    );
 
 -- S1: Data + Ação
-create index idx_auditoria_dt_acao on
+create index if not exists idx_auditoria_dt_acao on
    auditoria (
       dt_evento,
       cod_acao
    );
 
 -- S2: Entidade + ID + Data
-create index idx_auditoria_entidade_dt on
+create index if not exists idx_auditoria_entidade_dt on
    auditoria (
       tipo_entidade,
       id_entidade,
@@ -165,18 +165,18 @@ create index idx_auditoria_entidade_dt on
    );
 
 -- S3: Usuário + Data
-create index idx_auditoria_usr_dt on
+create index if not exists idx_auditoria_usr_dt on
    auditoria (
       usr_evento,
       dt_evento
    );
 
 -- FK indexes
-create index idx_campo_ant_auditoria_id on
+create index if not exists idx_campo_ant_auditoria_id on
    auditoria_campo_anterior (
       auditoria_id
    );
-create index idx_campo_pos_auditoria_id on
+create index if not exists idx_campo_pos_auditoria_id on
    auditoria_campo_posterior (
       auditoria_id
    );
