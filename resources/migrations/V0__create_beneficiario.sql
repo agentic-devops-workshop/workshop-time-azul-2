@@ -244,9 +244,11 @@ create index idx_beneficiario_dt_inclusao on
    );
 
 -- S2: UF + Situação (superdescriptor composto)
-create index idx_beneficio_uf_situacao on
+-- NOTA: No modelo normalizado, UF está em beneficiario_endereco e situação em
+-- beneficiario_beneficio. Esse superdescriptor requer JOIN entre tabelas.
+-- Índice funcional criado na tabela de benefício por situação para consultas frequentes.
+create index idx_beneficio_situacao on
    beneficiario_beneficio (
-      cod_programa,
       sit_beneficiario
    );
 
