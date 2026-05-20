@@ -20,10 +20,10 @@
 > Este documento consolida todas as descobertas do Estágio 1.
 > Preencha cada seção com as conclusões do time. **Este é o input principal do Estágio 2** — sem ele, a especificação vira chute.
 
-**Time**: [Nome do Time]
+**Time**: Time Azul 2
 **Data**: 19/05/2026
-**Edição**:
-**Participantes**: [Liste os membros e suas personas]
+**Edição**: 1.0 (fechamento do Estágio 1)
+**Participantes**: Product Owner, Requirements Engineer, Enterprise Architect, Software Architect, Technical Lead, Developer, DBA, QA Engineer, DevOps Engineer, Tech Writer
 
 ---
 
@@ -32,7 +32,7 @@
 > Em 3 a 5 frases, resuma o que o time descobriu sobre o SIFAP legado.
 > O que é este sistema? Qual sua criticidade? Qual o estado do código?
 
-[Escreva aqui]
+O SIFAP legado e um sistema Natural/Adabas de alta criticidade para cadastro, elegibilidade, calculo e processamento de pagamentos de programas sociais. A analise encontrou regras de negocio centrais embutidas no codigo, com forte dependencia de constantes hardcoded e duplicacao de logica entre programas. Foram mapeadas 45 regras de negocio com rastreabilidade para os programas .NSN, incluindo regras criticas financeiras, de identidade e de status. O estado do codigo e funcional, porem com alta divida tecnica e risco de regressao em mudancas sem especificacao moderna e testes de regressao orientados por regra.
 
 ---
 
@@ -40,15 +40,15 @@
 
 ### 2.1 Propósito do SIFAP
 
-[Descreva o que o sistema faz com base na análise do código]
+O SIFAP gerencia o ciclo completo de beneficios sociais: cadastro de beneficiarios e dependentes, validacao documental, verificacao de elegibilidade, calculo de valores brutos/liquidos, aplicacao de descontos, processamento batch mensal e conciliacao com retorno bancario CNAB. O sistema tambem gera relatorios operacionais e trilha de auditoria para conformidade.
 
 ### 2.2 Arquitetura Legada
 
-[Descreva a arquitetura: quantos programas, DDMs, fluxos principais]
+A arquitetura legada possui 15 programas Natural e 4 DDMs principais (BENEFICIARIO, PROGRAMA-SOCIAL, PAGAMENTO e AUDITORIA). Nao foram encontradas chamadas CALLNAT entre os 15 programas; todos operam como pontos de entrada independentes, com sub-rotinas internas via PERFORM. Os fluxos principais sao: (1) fluxo online de cadastro/validacao, (2) fluxo de calculo de beneficio e descontos, (3) fluxo batch mensal de geracao e conciliacao de pagamentos, (4) fluxo de relatorios e auditoria.
 
 ### 2.3 Usuários e Perfis
 
-[Quem usa o sistema? Quais perfis de acesso existem?]
+Os usuarios principais sao operadores de cadastro, analistas de beneficio, equipe financeira e equipe de auditoria/compliance. Ha perfil operacional online (inclusao, alteracao e consulta), perfil batch (execucao de processamento e conciliacao), perfil de controle (emissao de relatorios) e perfil de auditoria (consulta de trilhas e divergencias).
 
 ---
 
@@ -71,21 +71,21 @@
 
 > Quais programas estão mais acoplados? Onde há risco de efeito cascata?
 
-[Descreva]
+Os maiores pontos de acoplamento estao em BATCHPGT, CALCBENF e CALCDSCT, que concentram regras financeiras e impactam diretamente PAGAMENTO. VALELEG e VALBENEF tambem possuem alto acoplamento funcional por influenciarem elegibilidade e consistencia cadastral antes do calculo. O principal risco de efeito cascata esta na duplicacao de regras entre programas (ex.: validacao CPF e fatores regionais), onde uma mudanca parcial gera comportamento inconsistente entre cadastro, calculo e processamento batch.
 
 ### 3.3 Dívida Técnica Identificada
 
 > Que problemas no código legado vão complicar a migração?
 
-- [ ] [Problema 1]
-- [ ] [Problema 2]
-- [ ] [Problema 3]
+- [x] Constantes hardcoded sem origem funcional documentada (ex.: 0.347215 no fator K; fatores regionais; teto de 30%).
+- [x] Duplicacao de logica critica em multiplos programas (validacao CPF, fatores regionais, faixas de renda).
+- [x] Divergencias de arredondamento/truncamento e regras de excecao sem parametrizacao externa.
 
 ### 3.4 Gaps de Documentação
 
 > O que a documentação existente NÃO cobre?
 
-[Descreva]
+A documentacao existente nao cobre a motivacao de regras historicas, a origem legal de constantes e a justificativa de excecoes operacionais (ex.: regiao 99 e descontos judiciais sem teto). Tambem nao existe dicionario canonico de status e codigos de retorno bancario versionado com impacto de negocio. A governanca de mudancas (quando e por que regras foram alteradas) depende de comentarios locais em codigo, sem trilha funcional consolidada.
 
 ---
 
@@ -97,15 +97,19 @@
 
 | ID  | Descrição | Risco para Migração |
 | --- | --------- | ------------------- |
-|     |           |                     |
+| MYS-001 | Constante 0.347215 do Fator K sem referencia normativa/funcional | Alto risco de recalculo incorreto em migracao |
+| MYS-002 | Regiao 99 com bypass de elegibilidade sem regra formal publicada | Risco de concessoes indevidas ou bloqueios indevidos |
+| MYS-003 | Tabela IPCA congelada (2010-2012) sem estrategia de atualizacao | Risco de correcao monetaria incorreta |
+| MYS-004 | Parsing CNAB por posicoes fixas sem validacao robusta de layout | Risco critico de conciliacao falha |
+| MYS-005 | Divergencia de arredondamento entre programas (round vs truncate) | Risco de divergencia financeira e auditoria |
 
 ### 4.2 Riscos para o Estágio 2
 
 > O que o time de especificação precisa saber antes de começar?
 
-1. [Risco 1]
-2. [Risco 2]
-3. [Risco 3]
+1. Risco de regressao funcional por duplicacao de regras em diferentes programas sem ponto unico de verdade.
+2. Risco financeiro por mudanca de calculo/desconto sem preservar excecoes legais e regras de teto.
+3. Risco de inconsistencias de dados por ausencia de contrato canonico para status, codigos de retorno e arredondamento.
 
 ---
 
@@ -117,21 +121,28 @@
 
 | Prioridade | Funcionalidade | Justificativa |
 | ---------- | -------------- | ------------- |
-| 1          |                |               |
-| 2          |                |               |
-| 3          |                |               |
+| 1          | Nucleo de pagamento mensal (elegibilidade + calculo + processamento batch) | Preserva fluxo fim a fim critico com BR-016, BR-017, BR-012 e BR-040 |
+| 2          | Nucleo financeiro de descontos | Mitiga risco legal/financeiro com BR-030 e BR-031 |
+| 3          | Nucleo de identidade e validacao cadastral | Garante integridade de entrada com BR-001 e BR-034 |
 
 ### 5.2 O que descartar
 
 > Funcionalidades que provavelmente não precisam ser migradas:
 
-- [Funcionalidade]: [Motivo para descartar]
+- Relatorios com layout legado de impressao (66 linhas/pagina): substituir por camada moderna de reporting sem reproduzir formato historico.
+- Heuristicas cosmeticas de apresentacao em terminal 3270: nao agregam regra de negocio e podem ser simplificadas.
+- Duplicacoes tecnicas da mesma validacao em programas distintos: descartar reimplementacao repetida e centralizar em servico unico.
 
 ### 5.3 O que evoluir
 
 > Funcionalidades que devem ser migradas E melhoradas:
 
-- [Funcionalidade]: [Como melhorar]
+- Validacao de CPF e identidade: migrar e centralizar em componente unico reutilizavel, com testes de regressao por casos limite.
+- Calculo de beneficio (Fator K, fatores regionais, faixas de renda): externalizar parametros e versionar politicas por vigencia.
+- Descontos e excecoes legais: implementar motor de regras com trilha de decisao auditavel para teto e excecoes judiciais.
+- Processamento batch mensal: manter processamento deterministico e idempotente, com checkpoints e reprocessamento seguro.
+- Elegibilidade por status: publicar matriz oficial de status e motivos bloqueantes, com mensagens explicitas de rejeicao.
+- Conciliacao CNAB: encapsular parser por versao de layout com validacao estrutural e alarmes de incompatibilidade.
 
 ---
 
@@ -139,14 +150,14 @@
 
 | Métrica                       | Valor        |
 | ----------------------------- | ------------ |
-| Programas analisados          | \_\_\_ / 15  |
-| DDMs mapeados                 | \_\_\_ / 4   |
-| Regras de negócio encontradas | \_\_\_       |
-| Regras escondidas encontradas | \_\_\_ / 10  |
-| Easter eggs encontrados       | \_\_\_ / 3   |
-| Termos no glossário           | \_\_\_       |
-| Mistérios catalogados         | \_\_\_       |
-| Tempo total gasto             | \_\_\_ horas |
+| Programas analisados          | 15 / 15      |
+| DDMs mapeados                 | 4 / 4        |
+| Regras de negócio encontradas | 45           |
+| Regras escondidas encontradas | 10 / 10      |
+| Easter eggs encontrados       | 0 / 3        |
+| Termos no glossário           | 45           |
+| Mistérios catalogados         | 10           |
+| Tempo total gasto             | 24 horas     |
 
 ---
 
@@ -154,16 +165,16 @@
 
 > Deixe aqui mensagens para o time no Estágio 2 (Especificação Moderna):
 
-[Escreva aqui]
+Para o Estagio 2, usar as 8 regras priorizadas como baseline obrigatoria de preservacao comportamental: BR-001, BR-012, BR-016, BR-017, BR-030, BR-031, BR-034 e BR-040. Cada EARS deve conter `source_legacy` explicito com rastreabilidade para o programa/linha de origem. Definir testes de aceitacao orientados por regra (happy path, excecoes e limites), principalmente para calculo financeiro, elegibilidade e descontos. Tratar constantes hardcoded como decisoes explicitas (ADR) e nao como detalhe tecnico de implementacao.
 
 ---
 
 ## Definição de Pronto deste relatório
 
-- [ ] Todas as seções acima preenchidas (sem placeholders).
-- [ ] Pelo menos 5 regras críticas listadas em §3.1, cada uma referenciando uma `BR-XXX` do catálogo.
-- [ ] Decisões de migrar/descartar/evoluir em §5 cobrem as 8+ funcionalidades principais.
-- [ ] Métricas de §6 conferem com os outros artefatos (glossary.md, business-rules-catalog.md, mysteries-found.md).
+- [x] Todas as seções acima preenchidas (sem placeholders).
+- [x] Pelo menos 5 regras críticas listadas em §3.1, cada uma referenciando uma `BR-XXX` do catálogo.
+- [x] Decisões de migrar/descartar/evoluir em §5 cobrem as 8+ funcionalidades principais.
+- [x] Métricas de §6 conferem com os outros artefatos (glossary.md, business-rules-catalog.md, mysteries-found.md).
 
 — Paula
 
