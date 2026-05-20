@@ -46,21 +46,78 @@ O que NÃO conta: paginação de relatório, formatação de saída, manipulaç�
 
 | ID     | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
 | ------ | ---------------- | -------------- | ---------- | -------------- | ----- |
-| BR-001 | CPF é imutável: na operação ALTERAÇÃO, CPF não é reescrito no banco de dados | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L142-L181` | BENEFICIARIO.CPF | CRÍTICO | Evita fraude de troca de identidade. Imutabilidade garante auditoria. Se programador alterar, quebra rastreamento. |
-| BR-002 | Status automático SÊNIOR: beneficiário com idade > 75 anos recebe STATUS='S' automaticamente na inclusão | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L135-L137` | BENEFICIARIO.STATUS, BENEFICIARIO.DT-NASCIMENTO | ALTO | Alterado em 2011 ("AJUSTE STATUS IDOSO") mas documentação não explica: (a) o que 'S' significa; (b) por que 75; (c) impacto em elegibilidade. Pode estar desatualizado. |
-| BR-003 | Auditoria de Timestamps: DT-CADASTRO (inclusão) e DT-ATUALIZACAO (última alteração) são sempre preenchidas com data de hoje | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L172-L173,L178` | BENEFICIARIO.DT-CADASTRO, BENEFICIARIO.DT-ATUALIZACAO | MÉDIO | Rastreamento de quando beneficiário foi criado vs modificado. Permite auditoria temporal. Ambas = *DATN (data do sistema). |
-| BR-004 | COD-PROGRAMA é imutável: na operação ALTERAÇÃO, código de programa NÃO é atualizado no banco de dados | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L167,L142-L181` | BENEFICIARIO.COD-PROGRAMA | ALTO | Trocar de programa requer exclusão + recadastro. Impede transferência simples entre programas. Pode gerar duplicação de beneficiários. |
-| BR-005 | Dependentes iniciam em zero: novo beneficiário é criado com NUM-DEPENDENTES = 0; só aumenta via CADDEPEND | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L167` | BENEFICIARIO.NUM-DEPENDENTES | MÉDIO | Separação de responsabilidade entre cadastro beneficiário (CADBENEF) e cadastro dependentes (CADDEPEND). Evita inconsistência de contadores. |
-| BR-006 | Limite hardcoded de 5 dependentes por beneficiário: NUM-DEPENDENTES > 5 rejeita nova inclusão | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L58-L60` | BENEFICIARIO.NUM-DEPENDENTES, BENEFICIARIO.DEPENDENTES (PE) | MÉDIO | Limite arbitrário. Não configurável. Afeta famílias maiores. Pode estar obsoleto (ex: família com 8 filhos não consegue se registrar). |
-| BR-007 | Bloqueio de Cancelados: beneficiário com STATUS='C' (cancelado) ou 'D' (desligado) não pode adicionar dependentes | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L57-L59` | BENEFICIARIO.STATUS | ALTO | Evita operações em beneficiários inativos. Assimetria: você NÃO PODE adicionar dependente a cancelado, mas dependentes já existentes ficam lá. Pode deixar dados órfãos. |
-| BR-008 | Parentesco restrito a 4 códigos: PARENTESCO deve ser um de: FI (filho), CO (cônjuge), IR (irmão), OU (outro) | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L75-L77` | BENEFICIARIO.DEPENDENTES.PARENTESCO | MÉDIO | Sem mapeamento de "Outro" — qual categoria? Pai? Avó? Enteado? Genro? Permite ambiguidade em "OU". Impacta elegibilidade e cálculo de renda. |
-| BR-009 | CPF duplicado em dependentes é rejeitado: se CPF do dependente já existe no PE (Periodic Element), rejeita | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L87-L90` | BENEFICIARIO.DEPENDENTES.CPF-DEP | MÉDIO | MAS permite CPF=0 (desconhecido). Nenhum programa downstream valida se CPF é válido antes de usar. Pode gerar erros em BATCHPGT. |
-| BR-010 | Transação imediata por dependente: cada dependente incluído dispara UPDATE + END TRANSACTION separadamente | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L99-L103` | BENEFICIARIO.DEPENDENTES | MÉDIO | Se loop falha no meio (ex: 3 de 5 dependentes), os 3 primeiros ficam gravados (transação parcial). Sem rollback. Deixa dados inconsistentes. |
-| BR-011 | Programa é imutável por código: programa não permite UPDATE ou DELETE; operações são I (incluir) ou C (consultar) apenas | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L49-L55,L70-L75` | PROGRAMA-SOCIAL.COD-PROGRAMA | ALTO | Para trocar programa, requer criar novo com código diferente. Impede manutenção de valores base. Tabela legada pode crescer infinitamente. |
-| BR-012 | Fator K aplica ajuste multiplicativo: VLR-CALC = VLR-BASE × (1.00 + FATOR-REAJ × 0.347215) | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L76-L78` | PROGRAMA-SOCIAL.VLR-BASE, PROGRAMA-SOCIAL.FATOR-REAJUSTE | **CRÍTICO** | **CONSTANTE MISTERIO**: 0.347215 sem origem documentada, sem comentário. Reutilizada em CALCBENF e BATCHPGT. Se errada, TODOS os benefícios calculados errados desde 1997. Impacto financeiro MASSIVO. |
-| BR-013 | Status inicial sempre ATIVO: novo programa é criado com STATUS-PROG='A' (ativo) | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L84` | PROGRAMA-SOCIAL.STATUS-PROG | MÉDIO | Para desativar programa, requer criar novo ou operação DELETE (não implementada). Pode deixar programas obsoletos ativos. |
-| BR-014 | Elegibilidade é atributo do programa: cada programa tem COD-ELEGIBILIDADE que determina quem se qualifica | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L60,L82` | PROGRAMA-SOCIAL.COD-ELEGIBILIDADE | ALTO | Código de elegibilidade é definido em CADPROG, usado em VALELEG para validar beneficiário. Se código errado aqui, VALELEG rejeita beneficiários válidos. Cascata de erro. |
-| BR-015 | Data Fim pode ser zero (indefinida): DT-FIM=0 significa programa sem data de término (vigência indefinida) | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L62` | PROGRAMA-SOCIAL.DT-FIM | MÉDIO | Código NÃO valida se DT-FIM >= DT-INICIO ou se DT-FIM passou. Programa com DT-FIM no passado continua "Ativo". Permite inconsistência. |
+### Cálculos Financeiros
+
+| ID | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
+|----|------------------|---------------|------------|---------------|-------|
+| BR-012 | Fator K aplica ajuste multiplicativo: VLR-CALC = VLR-BASE × (1.00 + FATOR-REAJ × 0.347215) | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L76-L78` | PROGRAMA-SOCIAL.VLR-BASE, PROGRAMA-SOCIAL.FATOR-REAJUSTE | CRÍTICO | CONSTANTE MISTÉRIO: 0.347215 sem origem documentada. Reutilizada em CALCBENF e BATCHPGT. |
+| BR-017 | Fatores regionais hardcoded: 27 regiões com multiplicadores de 1.0 a 1.4 | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L95-L124,CALCBENF.NSN#L170-L199` | BENEFICIARIO.COD-REGIAO | ALTO | Tabelas idênticas em BATCHPGT e CALCBENF. |
+| BR-018 | Faixas de renda com fatores multiplicadores: 5 faixas (até 300=1.0x, até 600=0.85x, até 1000=0.7x, até 1500=0.55x, >1500=0.4x) | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L126-L135,CALCBENF.NSN#L201-L210` | BENEFICIARIO.RENDA-FAMILIAR | ALTO | Fator cai com renda crescente. |
+| BR-027 | Fator Familiar adicional por dependente: sem dep=1.0x, 1-2 dep=(1.0 + dep*0.05), 3-4 dep=(1.1 + (dep-2)*0.03), >4 dep=(1.16 + (dep-4)*0.02) | `01-arqueologia/legado-sifap/natural-programs/CALCBENF.NSN#L183-L199` | BENEFICIARIO.NUM-DEPENDENTES | ALTO | Fórmula progressiva de bônus familiar. |
+| BR-028 | Tabela IPCA congelada em 2014: 3 anos (2010-2012) com índices mensais para correção retroativa de pagamentos | `01-arqueologia/legado-sifap/natural-programs/CALCCORR.NSN#L51-L85` | PAGAMENTO.VLR-CORRECAO, PAGAMENTO.DT-CORRECAO | MÉDIO | Bloco comentado (PLANO VERÃO 1989-1991) nunca removido. |
+| BR-029 | Índice acumulado truncado: VLR-CORR * 100, trunca, / 100 (não arredonda) | `01-arqueologia/legado-sifap/natural-programs/CALCCORR.NSN#L110-L116` | PAGAMENTO.VLR-CORRECAO | MÉDIO | Pode deixar centavos para trás. |
+| BR-030 | Desconto compulsório tem teto de 30% do bruto: totaliza todos os descontos até limite 30% | `01-arqueologia/legado-sifap/natural-programs/CALCDSCT.NSN#L101-L103` | PAGAMENTO.VLR-DESCONTO | ALTO | Proteção legal de renda mínima. Judicial não tem teto. |
+| BR-031 | Desconto judicial sem teto: pode exceder 30% do bruto se ordem judicial | `01-arqueologia/legado-sifap/natural-programs/CALCDSCT.NSN#L125-L131` | PAGAMENTO.VLR-DESCONTO | CRÍTICO | Tipo 'J' (judicial) é exceção. |
+| BR-032 | Desconto sindical fixo 1%: tipo 'S' sempre calcula como BRUTO * 0.01 | `01-arqueologia/legado-sifap/natural-programs/CALCDSCT.NSN#L144-L146` | BENEFICIARIO.DESCONTOS.PCT-DSCT | MÉDIO | Hardcoded 1%. |
+| BR-033 | Contribuição social com faixas: 500=3%, 1000=5%, 2000=7%, >2000=9% | `01-arqueologia/legado-sifap/natural-programs/CALCDSCT.NSN#L61-L68` | PAGAMENTO.VLR-BRUTO | MÉDIO | Tabela alíquotas em 4 faixas. |
+
+### Validações de Status
+
+| ID | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
+|----|------------------|---------------|------------|---------------|-------|
+| BR-002 | Status automático SÊNIOR: beneficiário com idade > 75 anos recebe STATUS='S' automaticamente | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L135-L137` | BENEFICIARIO.STATUS, BENEFICIARIO.DT-NASCIMENTO | ALTO | Alterado em 2011. |
+| BR-007 | Bloqueio de Cancelados: STATUS='C' ou 'D' não pode adicionar dependentes | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L57-L59` | BENEFICIARIO.STATUS | ALTO | Evita operações em beneficiários inativos. |
+| BR-020 | Status ATIVO apenas processado: IF STATUS NE 'A', ignora beneficiário | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L163-L167` | BENEFICIARIO.STATUS, PAGAMENTO.STATUS-PGTO | MÉDIO | Consistente com CALCBENF, VALELEG. |
+| BR-040 | Status beneficiário bloqueia elegibilidade: 'A'=ativo/elegível, 'S'=suspenso, 'C'/'D'=cancelado/desligado, 'I'=inativo | `01-arqueologia/legado-sifap/natural-programs/VALELEG.NSN#L77-L95` | BENEFICIARIO.STATUS | ALTO | Múltiplos valores de status. |
+
+### Regras de Identidade e Cadastro
+
+| ID | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
+|----|------------------|---------------|------------|---------------|-------|
+| BR-001 | CPF é imutável na alteração | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L142-L181` | BENEFICIARIO.CPF | CRÍTICO | Evita fraude de troca de identidade. |
+| BR-004 | COD-PROGRAMA é imutável na alteração | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L167,L142-L181` | BENEFICIARIO.COD-PROGRAMA | ALTO | Trocar de programa requer exclusão + recadastro. |
+| BR-005 | Dependentes iniciam em zero | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L167` | BENEFICIARIO.NUM-DEPENDENTES | MÉDIO | Só aumenta via CADDEPEND. |
+| BR-006 | Limite de 5 dependentes por beneficiário | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L58-L60` | BENEFICIARIO.NUM-DEPENDENTES | MÉDIO | Limite arbitrário. |
+| BR-008 | Parentesco restrito a 4 códigos | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L75-L77` | BENEFICIARIO.DEPENDENTES.PARENTESCO | MÉDIO | FI, CO, IR, OU. |
+| BR-009 | CPF duplicado em dependentes é rejeitado | `01-arqueologia/legado-sifap/natural-programs/CADDEPEND.NSN#L87-L90` | BENEFICIARIO.DEPENDENTES.CPF-DEP | MÉDIO | Permite CPF=0. |
+| BR-034 | Validação CPF com Módulo 11: 3 cópias da mesma lógica | `01-arqueologia/legado-sifap/natural-programs/VALBENEF.NSN#L85-L120,VALDOCS.NSN#L68-L105,CADBENEF.NSN#L225-L260` | BENEFICIARIO.CPF | ALTO | Duplicação crítica. |
+| BR-035 | Validação data de nascimento | `01-arqueologia/legado-sifap/natural-programs/VALBENEF.NSN#L89-L115` | BENEFICIARIO.DT-NASCIMENTO | MÉDIO | Verifica dias por mês (bissexto=29). |
+| BR-036 | Validação nome: exige espaço e comprimento > 1 | `01-arqueologia/legado-sifap/natural-programs/VALBENEF.NSN#L116-L125` | BENEFICIARIO.NOME | BAIXO | Nome único rejeita. |
+| BR-037 | Validação UF: 27 UFs hardcoded | `01-arqueologia/legado-sifap/natural-programs/VALBENEF.NSN#L121-L150` | BENEFICIARIO.UF | BAIXO | Se nova UF criada, código quebra. |
+| BR-038 | Documentos especiais com prefixos | `01-arqueologia/legado-sifap/natural-programs/VALDOCS.NSN#L50-L58` | BENEFICIARIO.CPF | MÉDIO | 8 prefixos de CPF indicam doc especial. |
+
+### Regras de Processamento em Lote e Relatórios
+
+| ID | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
+|----|------------------|---------------|------------|---------------|-------|
+| BR-016 | Processamento BATCHPGT é CRÍTICO: execução 1º dia útil do mês | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L10-L12,L150-L160` | BENEFICIARIO.STATUS, PAGAMENTO.* | CRÍTICO | Se falhar parcialmente, deixa pagamentos incompletos. |
+| BR-019 | Deduplicação de CPF em BATCHPGT | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L155-L160` | BENEFICIARIO.CPF | MÉDIO | Só primeira cópia é processada. |
+| BR-021 | Acumuladores por status de pagamento: G, P, C, D, E | `01-arqueologia/legado-sifap/natural-programs/BATCHREL.NSN#L73-L85` | PAGAMENTO.STATUS-PGTO | MÉDIO | Mapeamento de status em relatório. |
+| BR-022 | Mapeamento de região para índice | `01-arqueologia/legado-sifap/natural-programs/BATCHREL.NSN#L64-L82` | BENEFICIARIO.COD-REGIAO | MÉDIO | 5 regiões macro. |
+| BR-023 | Arredondamento divergente entre programas | `01-arqueologia/legado-sifap/natural-programs/BATCHREL.NSN#L85-L91` | PAGAMENTO.VLR-BRUTO | MÉDIO | Pode causar divergência de centavos. |
+| BR-024 | Conciliação bancária com CNAB 240: parsing de posições fixas | `01-arqueologia/legado-sifap/natural-programs/BATCHCON.NSN#L76-L91` | PAGAMENTO.CPF-BENEF, PAGAMENTO.VLR-LIQUIDO, PAGAMENTO.DT-PAGAMENTO | CRÍTICO | Se layout Banco do Brasil muda, quebra. |
+| BR-025 | Status atualizado por código de retorno CNAB | `01-arqueologia/legado-sifap/natural-programs/BATCHCON.NSN#L115-L141` | PAGAMENTO.STATUS-PGTO, PAGAMENTO.COD-RETORNO | ALTO | Mapeamento de retorno bancário. |
+| BR-026 | Divergência de centavos aceita até 0.01 | `01-arqueologia/legado-sifap/natural-programs/BATCHCON.NSN#L106-L112` | PAGAMENTO.VLR-LIQUIDO | MÉDIO | Tolerância hardcoded. |
+| BR-043 | Relatório de pagamentos com quebra de programa | `01-arqueologia/legado-sifap/natural-programs/RELPGT.NSN#L71-L85` | PAGAMENTO.COD-PROGRAMA | MÉDIO | Subtotal ao programa mudar. |
+| BR-044 | Auditoria trilha: todas as ações registradas em ARQ 170 | `01-arqueologia/legado-sifap/natural-programs/RELAUDIT.NSN#L45-L65` | AUDITORIA.ACAO, AUDITORIA.DT-EVENTO, AUDITORIA.HR-EVENTO | MÉDIO | Trilha para compliance. |
+| BR-045 | Data padrão para auditoria se vazia | `01-arqueologia/legado-sifap/natural-programs/RELAUDIT.NSN#L77-L82` | AUDITORIA.DT-EVENTO | BAIXO | 19970101 é data "fundação" do SIFAP. |
+
+### Regras de Elegibilidade e Autorização
+
+| ID | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
+|----|------------------|---------------|------------|---------------|-------|
+| BR-014 | Elegibilidade é atributo do programa | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L60,L82` | PROGRAMA-SOCIAL.COD-ELEGIBILIDADE | ALTO | Usado em VALELEG. |
+| BR-039 | Região 99 é exceção (INTERNACIONAL/DIPLOMÁTICO): sempre elegível | `01-arqueologia/legado-sifap/natural-programs/VALELEG.NSN#L71-L76` | BENEFICIARIO.COD-REGIAO, BENEFICIARIO.STATUS | MÉDIO | Região 99 bypass todas as regras. |
+| BR-041 | Faixa etária como elegibilidade | `01-arqueologia/legado-sifap/natural-programs/VALELEG.NSN#L96-L108` | PROGRAMA-SOCIAL.IDADE-MIN, PROGRAMA-SOCIAL.IDADE-MAX | MÉDIO | Se IDADE-MAX=0, não valida máximo. |
+| BR-042 | Busca alternativa por NIS | `01-arqueologia/legado-sifap/natural-programs/CONSBENF.NSN#L65-L79` | BENEFICIARIO.CPF, BENEFICIARIO.NIS | MÉDIO | 2 índices de busca. |
+
+### Regras de Negócio Temporais
+
+| ID | Regra de Negócio | Programa Fonte | Campos DDM | Nível de Risco | Notas |
+|----|------------------|---------------|------------|---------------|-------|
+| BR-003 | Auditoria de Timestamps: DT-CADASTRO e DT-ATUALIZACAO sempre preenchidas | `01-arqueologia/legado-sifap/natural-programs/CADBENEF.NSN#L172-L173,L178` | BENEFICIARIO.DT-CADASTRO, BENEFICIARIO.DT-ATUALIZACAO | MÉDIO | Permite auditoria temporal. |
+| BR-015 | Data Fim pode ser zero (indefinida) | `01-arqueologia/legado-sifap/natural-programs/CADPROG.NSN#L62` | PROGRAMA-SOCIAL.DT-FIM | MÉDIO | Vigência indefinida. |
+
 | BR-016 | Processamento BATCHPGT é CRÍTICO: execução 1º dia útil do mês, processa TODOS beneficiários ativos em ordem alfabética por CPF | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L10-L12,L150-L160` | BENEFICIARIO.STATUS, PAGAMENTO.* | **CRÍTICO** | Sistemas downstream dependem desta ordenação (CPF). Se falhar parcialmente, deixa pagamentos incompletos/inconsistentes. Alterado em 2015 com "INC AUDITORIA" mas sem detalhes. |
 | BR-017 | Fatores regionais hardcoded: 27 regiões com multiplicadores de 1.0 a 1.4 (ex: AC=1.35, SP=1.10) | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L95-L124,CALCBENF.NSN#L170-L199` | BENEFICIARIO.COD-REGIAO | ALTO | Tabelas idênticas em BATCHPGT e CALCBENF. Se regional fator muda (ex: novo critério de pobreza), requer UPDATE em 2+ programas. Sem versionamento. |
 | BR-018 | Faixas de renda com fatores multiplicadores: 5 faixas (até 300=1.0x, até 600=0.85x, até 1000=0.7x, até 1500=0.55x, >1500=0.4x) | `01-arqueologia/legado-sifap/natural-programs/BATCHPGT.NSN#L126-L135,CALCBENF.NSN#L201-L210` | BENEFICIARIO.RENDA-FAMILIAR | ALTO | Fator cai com renda crescente (progressivo inverso). Implementado em BATCHPGT e CALCBENF. Se faixa muda (legislação), requer alterar 2 programas. |
@@ -91,19 +148,6 @@ O que NÃO conta: paginação de relatório, formatação de saída, manipulaç�
 | BR-043 | Relatório de pagamentos com quebra de programa: lê pagamentos de competência, acumula por programa, imprime subtotal ao programa muda | `01-arqueologia/legado-sifap/natural-programs/RELPGT.NSN#L71-L85` | PAGAMENTO.COD-PROGRAMA | MÉDIO | Relatório usa control-break (quebra) por COD-PROGRAMA. Se programas não estão em ordem, subtotais erram. |
 | BR-044 | Auditoria trilha: todas as ações (INSERT, UPDATE, DELETE, CONSULTA, CONCILIACAO, DIVERGENCIA) são registradas em ARQ 170 com usuário, data, hora, antes/depois | `01-arqueologia/legado-sifap/natural-programs/RELAUDIT.NSN#L45-L65` | AUDITORIA.ACAO, AUDITORIA.DT-EVENTO, AUDITORIA.HR-EVENTO | MÉDIO | Trilha implementada para conformidade/compliance. Ações mapeadas: IN (inclusão), AL (alteração), CO (consulta), CC (conciliação), DV (divergência), OU (outros). Sem descrição de cada. |
 | BR-045 | Data padrão para auditoria se vazia: se DT-INI=0, padrão=19970101; se DT-FIM=0, padrão=hoje | `01-arqueologia/legado-sifap/natural-programs/RELAUDIT.NSN#L77-L82` | AUDITORIA.DT-EVENTO | BAIXO | Heurística de data padrão. 19970101 é data "fundação" do SIFAP (primeira alteração em 1997). Sem erro se usuário não informa. |
-| BR-003 |                  |                |            |                |       |
-| BR-004 |                  |                |            |                |       |
-| BR-005 |                  |                |            |                |       |
-| BR-006 |                  |                |            |                |       |
-| BR-007 |                  |                |            |                |       |
-| BR-008 |                  |                |            |                |       |
-| BR-009 |                  |                |            |                |       |
-| BR-010 |                  |                |            |                |       |
-| BR-011 |                  |                |            |                |       |
-| BR-012 |                  |                |            |                |       |
-| BR-013 |                  |                |            |                |       |
-| BR-014 |                  |                |            |                |       |
-| BR-015 |                  |                |            |                |       |
 
 > Adicione mais linhas conforme necessário. Lembre-se: existem **10 regras escondidas** no código!
 

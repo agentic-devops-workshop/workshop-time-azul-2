@@ -58,11 +58,14 @@
 
 > Liste as 5 regras de negócio mais importantes encontradas.
 
-1. [Regra + referência ao catálogo BR-XXX]
-2.
-3.
-4.
-5.
+1. CPF do beneficiário é imutável durante alteração cadastral (BR-001).
+2. Cálculo do benefício aplica Fator K como ajuste multiplicativo obrigatório (BR-012).
+3. Desconto compulsório é limitado a 30% do valor bruto do benefício (BR-030).
+4. Desconto judicial é exceção e pode ultrapassar o teto de 30% (BR-031).
+5. Validação de CPF com algoritmo Módulo 11 antes de efetivar cadastro/atualização (BR-034).
+6. Processamento mensal em BATCHPGT é obrigatório para geração de pagamentos (BR-016).
+7. Elegibilidade de pagamento depende do status do beneficiário (status bloqueantes impedem pagamento) (BR-040).
+8. Fatores regionais hardcoded alteram diretamente o valor final do benefício (BR-017).
 
 ### 3.2 Dependências Complexas
 
