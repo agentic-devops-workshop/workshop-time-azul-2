@@ -32,104 +32,181 @@
 
 ```mermaid
 flowchart TD
- subgraph "Programas Online"
- CADBENF["CADBENF.NSN<br/>Cadastro de Beneficiários"]
- CONBENF["CONBENF.NSN<br/>Consulta de Beneficiários"]
- REGPGTO["REGPGTO.NSN<br/>Registro de Pagamentos"]
+ classDef online fill:#4CAF50,stroke:#2E7D32,color:#fff
+ classDef calc fill:#2196F3,stroke:#1565C0,color:#fff
+ classDef valid fill:#9C27B0,stroke:#6A1B9A,color:#fff
+ classDef batch fill:#FF9800,stroke:#E65100,color:#fff
+ classDef relat fill:#F44336,stroke:#B71C1C,color:#fff
+ classDef ddm fill:#37474F,stroke:#263238,color:#fff
+
+ subgraph "Cadastro (Online)"
+  CADBENEF["CADBENEF.NSN<br/>Cadastro de Beneficiários"]:::online
+  CADDEPEND["CADDEPEND.NSN<br/>Cadastro de Dependentes"]:::online
+  CADPROG["CADPROG.NSN<br/>Cadastro de Programas Sociais"]:::online
+  CONSBENEF["CONSBENEF.NSN<br/>Consulta de Beneficiários"]:::online
  end
 
- subgraph "Programas Batch"
- BATCHPGT["BATCHPGT.NSN<br/>Processamento em Lote"]
+ subgraph "Cálculos (Online)"
+  CALCBENF["CALCBENF.NSN<br/>Cálculo de Benefícios"]:::calc
+  CALCCORR["CALCCORR.NSN<br/>Correção Monetária"]:::calc
+  CALCDSCT["CALCDSCT.NSN<br/>Cálculo de Descontos"]:::calc
  end
 
- subgraph "Subprogramas"
- CALCBENF["CALCBENF.NSN<br/>Cálculo de Benefícios"]
- VALCPF["VALCPF.NSN<br/>Validação de CPF"]
+ subgraph "Validações (Online)"
+  VALBENEF["VALBENEF.NSN<br/>Validação de Beneficiário"]:::valid
+  VALDOCS["VALDOCS.NSN<br/>Validação de Documentos"]:::valid
+  VALELEG["VALELEG.NSN<br/>Validação de Elegibilidade"]:::valid
+ end
+
+ subgraph "Batch (Scheduler)"
+  BATCHPGT["BATCHPGT.NSN<br/>Geração de Pagamentos"]:::batch
+  BATCHREL["BATCHREL.NSN<br/>Relatório Consolidado"]:::batch
+  BATCHCON["BATCHCON.NSN<br/>Conciliação Bancária"]:::batch
+ end
+
+ subgraph "Relatórios"
+  RELPGT["RELPGT.NSN<br/>Relatório de Pagamentos"]:::relat
+  RELAUDIT["RELAUDIT.NSN<br/>Relatório de Auditoria"]:::relat
  end
 
  subgraph "DDMs Adabas"
- DDM_BENEF[("DDM: BENEFICIARIO")]
- DDM_PGTO[("DDM: PAGAMENTO")]
+  DDM_BENEF[("BENEFICIARIO<br/>ARQ 150")]:::ddm
+  DDM_PGTO[("PAGAMENTO<br/>ARQ 160")]:::ddm
+  DDM_PROG[("PROGRAMA-SOCIAL<br/>ARQ 155")]:::ddm
+  DDM_AUDIT[("AUDITORIA<br/>ARQ 170")]:::ddm
  end
 
- CADBENF -->|CALLNAT| VALCPF
- CADBENF -->|CALLNAT| CALCBENF
- CADBENF -->|READ/STORE| DDM_BENEF
+ CADBENEF -->|READ/STORE/UPDATE| DDM_BENEF
+ CADDEPEND -->|READ/UPDATE| DDM_BENEF
+ CADPROG -->|READ/STORE| DDM_PROG
+ CONSBENEF -->|READ| DDM_BENEF
+ CONSBENEF -->|READ| DDM_PGTO
 
- REGPGTO -->|CALLNAT| CALCBENF
- REGPGTO -->|READ/STORE| DDM_PGTO
+ CALCBENF -->|READ| DDM_BENEF
+ CALCBENF -->|READ| DDM_PROG
+ CALCBENF -->|STORE| DDM_PGTO
+ CALCCORR -->|READ/UPDATE| DDM_PGTO
+ CALCDSCT -->|READ| DDM_PGTO
+ CALCDSCT -->|READ| DDM_BENEF
+ CALCDSCT -->|UPDATE| DDM_PGTO
 
- CONBENF -->|READ| DDM_BENEF
+ VALBENEF -->|READ| DDM_BENEF
+ VALDOCS -->|READ| DDM_BENEF
+ VALELEG -->|READ| DDM_BENEF
+ VALELEG -->|READ| DDM_PROG
 
- BATCHPGT -->|CALLNAT| CALCBENF
- BATCHPGT -->|READ/UPDATE| DDM_PGTO
  BATCHPGT -->|READ| DDM_BENEF
+ BATCHPGT -->|READ/STORE| DDM_PGTO
+ BATCHPGT -->|READ| DDM_PROG
+ BATCHREL -->|READ| DDM_PGTO
+ BATCHREL -->|READ| DDM_BENEF
+ BATCHCON -->|READ/UPDATE| DDM_PGTO
+ BATCHCON -->|READ/STORE| DDM_AUDIT
+
+ RELPGT -->|READ| DDM_PGTO
+ RELPGT -->|READ| DDM_BENEF
+ RELAUDIT -->|READ| DDM_AUDIT
 ```
 
-> **Instrução:** este é apenas um exemplo inicial com 6 programas.
-> Seu time deve mapear **todos os 15 programas** e os **4 DDMs**.
+> **Legenda de cores:** 🟢 Online (Cadastro) · 🔵 Cálculos · 🟣 Validações · 🟠 Batch · 🔴 Relatórios · ⬛ DDMs Adabas
+>
+> **Nota:** Não há chamadas `CALLNAT` entre programas. Todos os 15 programas são pontos de entrada independentes que usam apenas `PERFORM` para sub-rotinas internas.
+
+> **Nota:** Não há chamadas `CALLNAT` entre programas. Todos os 15 programas são pontos de entrada independentes que usam apenas `PERFORM` para sub-rotinas internas.
 
 ## Diagrama de Fluxo de Dados (DDMs)
 
 ```mermaid
 flowchart LR
+ classDef entrada fill:#4CAF50,stroke:#2E7D32,color:#fff
+ classDef proc fill:#2196F3,stroke:#1565C0,color:#fff
+ classDef armaz fill:#37474F,stroke:#263238,color:#fff
+ classDef saida fill:#F44336,stroke:#B71C1C,color:#fff
+ classDef batch fill:#FF9800,stroke:#E65100,color:#fff
+
  subgraph "Entrada de Dados"
- UI["Terminal 3270"]
- BATCH["Arquivos Batch"]
+  UI["Terminal 3270<br/>(CADBENEF, CADDEPEND,<br/>CADPROG, CONSBENEF)"]:::entrada
+  BATCH["Arquivos Batch<br/>(BATCHPGT, BATCHREL, BATCHCON)"]:::batch
+  CNAB["Retorno CNAB 240<br/>(Banco do Brasil)"]:::batch
  end
 
  subgraph "Processamento"
- PROG["Programas Natural"]
+  CALC["Cálculos<br/>(CALCBENF, CALCCORR, CALCDSCT)"]:::proc
+  VAL["Validações<br/>(VALBENEF, VALDOCS, VALELEG)"]:::proc
+  REL["Relatórios<br/>(RELPGT, RELAUDIT)"]:::saida
  end
 
  subgraph "Armazenamento (Adabas)"
- DDM1[("BENEFICIARIO")]
- DDM2[("PAGAMENTO")]
- DDM3[("DDM 3: ???")]
- DDM4[("DDM 4: ???")]
+  DDM1[("BENEFICIARIO<br/>ARQ 150")]:::armaz
+  DDM2[("PAGAMENTO<br/>ARQ 160")]:::armaz
+  DDM3[("PROGRAMA-SOCIAL<br/>ARQ 155")]:::armaz
+  DDM4[("AUDITORIA<br/>ARQ 170")]:::armaz
  end
 
- UI --> PROG
- BATCH --> PROG
- PROG <--> DDM1
- PROG <--> DDM2
- PROG <--> DDM3
- PROG <--> DDM4
-```
+ subgraph "Saída"
+  IMP["Impressora Mainframe<br/>66 lin/pág"]:::saida
+  FLAT["Flat Files"]:::saida
+ end
 
-> Substitua "DDM 3: ???" e "DDM 4: ???" pelos nomes reais encontrados em [`../01-arqueologia/legado-sifap/adabas-ddms/`](../01-arqueologia/legado-sifap/adabas-ddms/).
+ UI --> VAL
+ UI --> CALC
+ BATCH --> CALC
+ CNAB --> BATCH
+ VAL <--> DDM1
+ VAL <--> DDM3
+ CALC <--> DDM1
+ CALC <--> DDM2
+ CALC <--> DDM3
+ BATCH <--> DDM2
+ BATCH <--> DDM4
+ REL --> DDM2
+ REL --> DDM4
+ REL --> IMP
+ REL --> FLAT
+ BATCH --> FLAT
+```
 
 ## Tabela de Dependências
 
-| Programa     | Chama (CALLNAT) | Lê (READ) DDMs | Escreve (STORE/UPDATE) DDMs | Observações |
-| ------------ | --------------- | -------------- | --------------------------- | ----------- |
-| CADBENF.NSN  |                 |                |                             |             |
-| CONBENF.NSN  |                 |                |                             |             |
-| REGPGTO.NSN  |                 |                |                             |             |
-| BATCHPGT.NSN |                 |                |                             |             |
-| CALCBENF.NSN |                 |                |                             |             |
-| VALCPF.NSN   |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
-|              |                 |                |                             |             |
+| Programa       | PERFORM (sub-rotinas internas)                             | Lê (FIND/READ) DDMs                          | Escreve (STORE/UPDATE) DDMs         | Observações                                                        |
+| -------------- | ---------------------------------------------------------- | --------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
+| CADBENEF.NSN   | VALIDA-CPF                                                 | BENEFICIARIO                                  | BENEFICIARIO (STORE, UPDATE)        | Inclusão/alteração; valida CPF Mod-11; status auto ≥75 anos        |
+| CADDEPEND.NSN  | —                                                          | BENEFICIARIO                                  | BENEFICIARIO (UPDATE)               | Vincula até 5 dependentes no grupo PE; valida parentesco           |
+| CADPROG.NSN    | CONSULTA-PROG                                              | PROGRAMA-SOCIAL                               | PROGRAMA-SOCIAL (STORE)             | Mantém tabela de programas sociais; inclusão e consulta            |
+| CONSBENEF.NSN  | MASCARA-CPF                                                | BENEFICIARIO, PAGAMENTO                       | —                                   | Tela online 3270; busca por CPF ou NIS; exibe histórico de pagtos  |
+| CALCBENF.NSN   | DET-FAIXA-RENDA, CALC-DESCONTOS                           | BENEFICIARIO, PROGRAMA-SOCIAL                 | PAGAMENTO (STORE)                   | Calcula valor bruto do benefício com faixas de renda e fator reg.  |
+| CALCCORR.NSN   | CALC-INDICE-ACUM                                           | PAGAMENTO                                     | PAGAMENTO (UPDATE)                  | Correção retroativa pela variação do IPCA                          |
+| CALCDSCT.NSN   | CALC-CONTRIB-SOCIAL                                        | PAGAMENTO, BENEFICIARIO                       | PAGAMENTO (UPDATE)                  | Descontos compulsórios e judiciais com alíquotas parametrizadas    |
+| VALBENEF.NSN   | VALIDA-CPF-COMPLETO, VALIDA-DATA, VALIDA-NOME              | BENEFICIARIO                                  | —                                   | Rotina chamada antes de qualquer gravação no ARQ 150               |
+| VALDOCS.NSN    | VALIDA-CPF-DOC, VALIDA-RG, CHECK-DOC-ESPECIAL              | BENEFICIARIO                                  | —                                   | Valida CPF, RG e documentos complementares                        |
+| VALELEG.NSN    | VERIF-ELEG-ESPECIFICA                                      | BENEFICIARIO, PROGRAMA-SOCIAL                 | —                                   | Verifica elegibilidade (faixa etária, renda, região 99)           |
+| BATCHPGT.NSN   | DET-FAIXA-RENDA-BATCH                                      | BENEFICIARIO, PAGAMENTO, PROGRAMA-SOCIAL      | PAGAMENTO (STORE)                   | Gera ciclo mensal de pagamentos; 13º/abono; auditoria             |
+| BATCHREL.NSN   | IMPRIME-CABECALHO                                          | PAGAMENTO, BENEFICIARIO                       | —                                   | Relatório consolidado mensal por região/programa/status; flat file |
+| BATCHCON.NSN   | GRAVA-AUDITORIA-DIVERG, GRAVA-AUDITORIA-CONC               | PAGAMENTO, AUDITORIA                          | PAGAMENTO (UPDATE), AUDITORIA (STORE) | Concilia CNAB 240 (Banco do Brasil); grava divergências           |
+| RELPGT.NSN     | IMPRIME-SUBTOTAL, IMPRIME-CABECALHO                        | PAGAMENTO, BENEFICIARIO                       | —                                   | Relatório analítico de pagamentos; 66 lin/pág; subtotais por prog |
+| RELAUDIT.NSN   | IMPRIME-CAB-AUDIT                                          | AUDITORIA                                     | —                                   | Trilha de auditoria com filtros por período e tipo de ação         |
 
 ## Dependências Circulares
 
 > Liste aqui qualquer dependência circular encontrada (programa A chama B que chama A):
 
-- Nenhuma encontrada até agora.
+- **Nenhuma dependência circular encontrada.** Todos os 15 programas usam apenas `PERFORM` (sub-rotinas internas definidas no mesmo arquivo). Não há `CALLNAT` (chamada entre programas) em nenhum dos 15 arquivos.
 
 ## Programas Órfãos
 
 > Programas que não são chamados por nenhum outro (possíveis pontos de entrada ou código morto):
 
-- A investigar.
+- **Todos os 15 programas são pontos de entrada independentes** — nenhum é chamado via `CALLNAT` por outro programa do conjunto. Cada um é invocado diretamente pelo operador (online) ou pelo scheduler batch (JCL).
+- Não há código morto identificado: todos os programas acessam pelo menos um DDM e implementam lógica de negócio ativa.
+
+## Resumo de Acesso aos DDMs
+
+| DDM                | Leitores (FIND/READ)                                                                                      | Escritores (STORE/UPDATE)                        |
+| ------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| **BENEFICIARIO**   | CADBENEF, CADDEPEND, CONSBENEF, CALCBENF, CALCDSCT, VALBENEF, VALDOCS, VALELEG, BATCHPGT, BATCHREL, RELPGT | CADBENEF (STORE/UPDATE), CADDEPEND (UPDATE)      |
+| **PAGAMENTO**      | CONSBENEF, CALCBENF, CALCCORR, CALCDSCT, BATCHPGT, BATCHREL, BATCHCON, RELPGT                             | CALCBENF (STORE), CALCCORR (UPDATE), CALCDSCT (UPDATE), BATCHPGT (STORE), BATCHCON (UPDATE) |
+| **PROGRAMA-SOCIAL** | CADPROG, CALCBENF, VALELEG, BATCHPGT                                                                     | CADPROG (STORE)                                  |
+| **AUDITORIA**      | BATCHCON, RELAUDIT                                                                                         | BATCHCON (STORE)                                 |
 
 ---
 
