@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD013 MD025 MD026 MD028 MD029 MD034 MD040 MD051 MD056 MD060 -->
 
-# 🏰 Kit do Time — Workshop SIFAP 2.0 (PT-BR)
+# 🏰 Kit do Time — Workshop SIFAP 2.0 (PT-BR) - Teste
 
 ![Jornada de modernização do SIFAP: de Natural e Adabas para Java 21 e Next.js 15](assets/hero-sifap-journey.svg)
 
